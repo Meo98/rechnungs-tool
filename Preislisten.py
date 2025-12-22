@@ -15,7 +15,7 @@ BG_COLOR = "#1e1e2e"       # Base
 TEXT_COLOR = "#cdd6f4"     # Text
 Card_BG = "#313244"        # Surface0
 
-st.markdown(f"""
+st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 

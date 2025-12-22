@@ -8,15 +8,54 @@ import cairosvg
 
 st.set_page_config(page_title="Rechnungsgenerator", page_icon=":money_with_wings:", layout="centered")
 
-PRIMARY_COLOR = "#3575D3"
-ACCENT_COLOR = "#F7B801"
-BG_COLOR = "#F1F4FA"
+# Catppuccin Mocha Colors
+PRIMARY_COLOR = "#89b4fa"  # Blue
+ACCENT_COLOR = "#f9e2af"   # Yellow
+BG_COLOR = "#1e1e2e"       # Base
+TEXT_COLOR = "#cdd6f4"     # Text
+Card_BG = "#313244"        # Surface0
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: {BG_COLOR}; }}
-    .stButton>button {{ color: white; background: {PRIMARY_COLOR}; border-radius:8px; }}
-    .stDownloadButton>button {{ color: white; background: {ACCENT_COLOR}; border-radius:8px; }}
+    /* Global Text and Background */
+    .stApp {{
+        background-color: {BG_COLOR};
+        color: {TEXT_COLOR};
+    }}
+    h1, h2, h3, h4, h5, h6, p, div, span, label {{
+        color: {TEXT_COLOR} !important;
+    }}
+    
+    /* Input Fields */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {{
+        color: {TEXT_COLOR};
+        background-color: {Card_BG};
+        border-color: {PRIMARY_COLOR};
+    }}
+    .stSelectbox>div>div>div {{
+        color: {TEXT_COLOR};
+        background-color: {Card_BG};
+    }}
+    
+    /* Buttons */
+    .stButton>button {{
+        color: {BG_COLOR};
+        background-color: {PRIMARY_COLOR};
+        border-radius: 8px;
+        border: none;
+        font-weight: bold;
+    }}
+    .stButton>button:hover {{
+        background-color: {ACCENT_COLOR};
+        color: {BG_COLOR};
+    }}
+    .stDownloadButton>button {{
+        color: {BG_COLOR};
+        background-color: {ACCENT_COLOR};
+        border-radius: 8px;
+        border: none;
+        font-weight: bold;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -24,7 +63,7 @@ st.title("Rechnungsgenerator mit offiziellem Swiss QR")
 
 # Feste Absender- und Empfängeradresse für QR
 CREDITOR_ADDR = {
-    "name": "Print Brigata",
+    "name": "Printbrigata",
     "street": "Oberer Deutweg",
     "house_num": "36",
     "pcode": "8400",
@@ -39,7 +78,7 @@ col1, col2 = st.columns([1, 3])
 with col1:
     logo_file = st.file_uploader("Firmenlogo (PNG/JPG)", type=["png", "jpg", "jpeg"])
 with col2:
-    firma_name = st.text_input("Firmenname", "Print Brigata")
+    firma_name = st.text_input("Firmenname", "Printbrigata")
 
 # Modus
 modus = st.selectbox("Abrechnungsmodus wählen", ["Solidarisch", "Kommerziell"])
@@ -112,6 +151,14 @@ st.header("Positionen")
 if "rows" not in st.session_state or not st.session_state["rows"]:
     st.session_state["rows"] = default_rows.copy()
 
+# Tabellen-Header
+h_cols = st.columns([2, 3, 2, 2, 2, 1])
+h_cols[0].markdown("**Typ**")
+h_cols[1].markdown("**Produkt**")
+h_cols[2].markdown("**Menge / Gramm**")
+h_cols[3].markdown("**Preis (CHF)**")
+h_cols[4].markdown("**Gesamt**")
+
 if st.button("Position hinzufügen"):
     st.session_state["rows"].append({
         "Typ": "Farbe", "Produkt": "", "Menge": 1, "Preis": 0.0, "Gramm": None
@@ -121,11 +168,17 @@ for idx, row in enumerate(st.session_state["rows"]):
     cols = st.columns([2, 3, 2, 2, 2, 1])
     # Typ-Auswahl
     with cols[0]:
+        typ_options = ["Farbe", "Kleidung", "Siebbeschichtung", "Folien", "Eigenes"]
+        try:
+            curr_index = typ_options.index(row["Typ"])
+        except ValueError:
+            curr_index = 0
+            
         typ = st.selectbox(
             "Typ",
-            ["Farbe", "Kleidung", "Siebbeschichtung", "Folien", "Eigenes"],
+            typ_options,
             key=f"typ_{idx}",
-            index=(["Farbe", "Kleidung", "Siebbeschichtung", "Folien", "Eigenes"].index(row["Typ"]) if row["Typ"] in ["Farbe", "Kleidung", "Siebbeschichtung", "Folien", "Eigenes"] else 0)
+            index=curr_index
         )
         row["Typ"] = typ
     # Produktauswahl abhängig vom Typ
@@ -175,7 +228,7 @@ for idx, row in enumerate(st.session_state["rows"]):
     with cols[5]:
         if st.button("❌", key=f"del_{idx}"):
             st.session_state["rows"].pop(idx)
-            st.experimental_rerun()
+            st.rerun()
 
 # Personalkosten (nur Kommerziell)
 arbeitskosten = 0

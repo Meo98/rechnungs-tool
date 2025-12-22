@@ -63,7 +63,7 @@ st.title("Rechnungsgenerator mit offiziellem Swiss QR")
 
 # Feste Absender- und Empfängeradresse für QR
 CREDITOR_ADDR = {
-    "name": "Printbrigata",
+    "name": "Solidarisches Siebdruck Kollektiv",
     "street": "Oberer Deutweg",
     "house_num": "36",
     "pcode": "8400",
@@ -234,24 +234,41 @@ for idx, row in enumerate(st.session_state["rows"]):
 arbeitskosten = 0
 if modus == "Kommerziell":
     st.header("Arbeitsstunden")
-    personen = st.radio("Anzahl Personen", [1, 2], horizontal=True)
-    stunden = st.number_input("Arbeitsstunden", min_value=0.0, step=0.5, value=0.0)
-    preis_arbeitsstunde = 100 if personen == 1 else 150
-    arbeitskosten = stunden * preis_arbeitsstunde
+    personen_col, stunden_col, rate_col = st.columns(3)
+    with personen_col:
+        personen = st.radio("Anzahl Personen", [1, 2], horizontal=True)
+    with stunden_col:
+        stunden = st.number_input("Arbeitsstunden", min_value=0.0, step=0.5, value=0.0)
+    with rate_col:
+        default_rate = 100 if personen == 1 else 150
+        stundenansatz = st.number_input("Stundenansatz (CHF/h)", min_value=0.0, step=10.0, value=float(default_rate))
+    
+    arbeitskosten = stunden * stundenansatz
+
+# Rabatt
+st.header("Rabatt")
+rabatt_prozent = st.number_input("Rabatt (%)", min_value=0.0, max_value=100.0, step=1.0, value=0.0)
 
 # Gesamtsumme berechnen
-total = 0
+total_items = 0
 for row in st.session_state["rows"]:
     if not row["Produkt"]:
         continue
     if row["Typ"] == "Farbe":
-        total += row["Preis"]
+        total_items += row["Preis"]
     else:
-        total += row["Preis"] * row["Menge"]
-total += arbeitskosten
-verbrauch_betrag = total * zuschlag_verbrauch
-betrieb_betrag = total * zuschlag_betrieb
-total_all = total + verbrauch_betrag + betrieb_betrag
+        total_items += row["Preis"] * row["Menge"]
+
+# Zwischensumme (Material + Arbeit)
+subtotal = total_items + arbeitskosten
+
+# Rabatt berechnen
+rabatt_betrag = subtotal * (rabatt_prozent / 100)
+subtotal_discounted = subtotal - rabatt_betrag
+
+verbrauch_betrag = subtotal_discounted * zuschlag_verbrauch
+betrieb_betrag = subtotal_discounted * zuschlag_betrieb
+total_all = subtotal_discounted + verbrauch_betrag + betrieb_betrag
 
 # SWISS QR erzeugen (SVG ➜ PNG)
 bill = QRBill(
@@ -275,87 +292,94 @@ buf.seek(0)
 
 # PDF-Export
 if st.button(f"{beleg_typ} generieren"):
-    pdf = FPDF()
-    pdf.add_page()
+    try:
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+        pdf.add_page()
 
-    # Firmenlogo und Kopfzeile
-    if logo_file:
-        image = Image.open(logo_file)
-        image.save("logo_temp.png")
-        pdf.image("logo_temp.png", x=10, y=10, w=40)
-    pdf.set_font("Arial", "B", 24)
-    pdf.set_xy(60, 18)
-    pdf.cell(0, 15, f"{beleg_typ}", ln=1)
-    
-    pdf.set_font("Arial", "", 14)
-    pdf.set_xy(10, 35)
-    pdf.cell(100, 10, "Rechnungsstellerin:", ln=0)
-    pdf.cell(0, 10, "Empfänger:", ln=1)
-    pdf.set_font("Arial", "", 12)
-    pdf.set_xy(10, 45)
-    pdf.multi_cell(80, 8, sender)
-    pdf.set_xy(110, 45)
-    pdf.multi_cell(80, 8, recipient)
+        # Firmenlogo und Kopfzeile
+        if logo_file:
+            pdf.image(logo_file, x=10, y=10, w=40)
+        pdf.set_font("Arial", "B", 24)
+        pdf.set_xy(60, 18)
+        pdf.cell(0, 15, f"{beleg_typ}", ln=1)
+        
+        pdf.set_font("Arial", "", 14)
+        pdf.set_xy(10, 35)
+        pdf.cell(100, 10, "Rechnungsstellerin:", ln=0)
+        pdf.cell(0, 10, "Empfänger:", ln=1)
+        pdf.set_font("Arial", "", 12)
+        pdf.set_xy(10, 45)
+        pdf.multi_cell(80, 8, sender)
+        pdf.set_xy(110, 45)
+        pdf.multi_cell(80, 8, recipient)
 
-    pdf.set_xy(10, 80)
-    pdf.set_font("Arial", "", 13)
-    pdf.cell(100, 8, f"Rechnungsnummer: {doc_nr}")
-    pdf.cell(0, 8, f"Datum: {doc_date}", ln=1)
-    pdf.ln(5)
-    pdf.set_font("Arial", "B", 15)
-    pdf.cell(0, 10, "Leistungen & Material", ln=1)
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(80, 10, "Produkt", 1)
-    pdf.cell(30, 10, "Menge", 1)
-    pdf.cell(30, 10, "Einzelpreis", 1)
-    pdf.cell(40, 10, "Gesamt", 1, ln=1)
-    pdf.set_font("Arial", "", 12)
-    for row in st.session_state["rows"]:
-        if not row["Produkt"]:
-            continue
-        if row["Typ"] == "Farbe":
-            einheit = "g"
-            menge = row["Gramm"]
-            preis = float(row["Preis"])
-            gesamt = preis
-        else:
-            einheit = "Stk"
-            menge = row["Menge"]
-            preis = float(row["Preis"])
-            gesamt = preis * menge
-        pdf.cell(80, 10, row["Produkt"], 1)
-        pdf.cell(30, 10, f"{menge} {einheit}", 1)
-        pdf.cell(30, 10, f"{preis:.2f}", 1)
-        pdf.cell(40, 10, f"{gesamt:.2f}", 1, ln=1)
-    # Personalkosten aufführen
-    if arbeitskosten > 0:
-        pdf.cell(140, 10, "Personalkosten", 1)
-        pdf.cell(40, 10, f"{arbeitskosten:.2f}", 1, ln=1)
-    # Zuschläge
-    pdf.cell(140, 10, f"Verbrauchsmaterial ({int(zuschlag_verbrauch*100)}%)", 1)
-    pdf.cell(40, 10, f"{verbrauch_betrag:.2f}", 1, ln=1)
-    pdf.cell(140, 10, f"Betriebskosten ({int(zuschlag_betrieb*100)}%)", 1)
-    pdf.cell(40, 10, f"{betrieb_betrag:.2f}", 1, ln=1)
-    
-    # FETTER TOTAL-Bereich
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(140, 15, "TOTAL", 1)
-    pdf.cell(40, 15, f"{total_all:.2f} CHF", 1, ln=1)
-    pdf.ln(10)
-    pdf.set_font("Arial", "", 12)
-    pdf.cell(0, 10, f"Empfänger: {CREDITOR_ADDR['name']}", ln=1, align="C")
-    pdf.cell(0, 10, f"IBAN: {iban}", ln=1, align="C")
-    pdf.cell(0, 10, f"Betrag: {total_all:.2f} CHF", ln=1, align="C")
-    pdf.cell(0, 8, "Zahlbar innert 30 Tagen.", ln=1, align="C")
+        pdf.set_xy(10, 80)
+        pdf.set_font("Arial", "", 13)
+        pdf.cell(100, 8, f"Rechnungsnummer: {doc_nr}")
+        pdf.cell(0, 8, f"Datum: {doc_date}", ln=1)
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 15)
+        pdf.cell(0, 10, "Leistungen & Material", ln=1)
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(80, 10, "Produkt", 1)
+        pdf.cell(30, 10, "Menge", 1)
+        pdf.cell(30, 10, "Einzelpreis", 1)
+        pdf.cell(40, 10, "Gesamt", 1, ln=1)
+        pdf.set_font("Arial", "", 12)
+        for row in st.session_state["rows"]:
+            if not row["Produkt"]:
+                continue
+            if row["Typ"] == "Farbe":
+                einheit = "g"
+                menge = row["Gramm"]
+                preis = float(row["Preis"])
+                gesamt = preis
+            else:
+                einheit = "Stk"
+                menge = row["Menge"]
+                preis = float(row["Preis"])
+                gesamt = preis * menge
+            pdf.cell(80, 10, row["Produkt"], 1)
+            pdf.cell(30, 10, f"{menge} {einheit}", 1)
+            pdf.cell(30, 10, f"{preis:.2f}", 1)
+            pdf.cell(40, 10, f"{gesamt:.2f}", 1, ln=1)
+        
+        # Personalkosten aufführen
+        if arbeitskosten > 0:
+            pdf.cell(140, 10, f"Personalkosten ({stunden}h @ {stundenansatz} CHF/h)", 1)
+            pdf.cell(40, 10, f"{arbeitskosten:.2f}", 1, ln=1)
+            
+        # Rabatt
+        if rabatt_betrag > 0:
+             pdf.cell(140, 10, f"Rabatt ({rabatt_prozent}%)", 1)
+             pdf.cell(40, 10, f"-{rabatt_betrag:.2f}", 1, ln=1)
+             
+        # Zuschläge
+        pdf.cell(140, 10, f"Verbrauchsmaterial ({int(zuschlag_verbrauch*100)}%)", 1)
+        pdf.cell(40, 10, f"{verbrauch_betrag:.2f}", 1, ln=1)
+        pdf.cell(140, 10, f"Betriebskosten ({int(zuschlag_betrieb*100)}%)", 1)
+        pdf.cell(40, 10, f"{betrieb_betrag:.2f}", 1, ln=1)
+        
+        # FETTER TOTAL-Bereich
+        pdf.set_font("Arial", "B", 16)
+        pdf.cell(140, 15, "TOTAL", 1)
+        pdf.cell(40, 15, f"{total_all:.2f} CHF", 1, ln=1)
+        pdf.ln(10)
+        pdf.set_font("Arial", "", 12)
+        pdf.cell(0, 10, f"Empfänger: {CREDITOR_ADDR['name']}", ln=1, align="C")
+        pdf.cell(0, 10, f"IBAN: {iban}", ln=1, align="C")
+        pdf.cell(0, 10, f"Betrag: {total_all:.2f} CHF", ln=1, align="C")
+        pdf.cell(0, 8, "Zahlbar innert 30 Tagen.", ln=1, align="C")
 
-    # Nächste Seite: QR-Code
-    pdf.add_page()
-    pdf.image(buf, x=25, y=30, w=160)  # Möglichst groß
+        # Nächste Seite: QR-Code
+        pdf.add_page()
+        pdf.image(buf, x=25, y=30, w=160)  # Möglichst groß
 
 
-    # Speichern und Download anbieten
-    pdf_file = f"{beleg_typ}_{doc_nr}.pdf"
-    pdf.output(pdf_file)
-    with open(pdf_file, "rb") as f:
+        # Speichern und Download anbieten
+        pdf_bytes = pdf.output()
         st.success(f"{beleg_typ} inkl. QR erstellt!")
-        st.download_button("PDF herunterladen", f, file_name=pdf_file)
+        st.download_button("PDF herunterladen", data=bytes(pdf_bytes), file_name=f"{beleg_typ}_{doc_nr}.pdf", mime="application/pdf")
+    except Exception as e:
+        st.error(f"Fehler beim Erstellen des PDFs: {e}")

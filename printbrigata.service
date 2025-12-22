@@ -1,0 +1,19 @@
+[Unit]
+Description=Printbrigata Rechnungstool
+After=network.target
+
+[Service]
+# User running the service. Change 'root' if you use a different user (e.g. 'ubuntu')
+User=root
+WorkingDirectory=/opt/rechnungs-tool
+Environment="PATH=/opt/rechnungs-tool/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+
+# command to start the app
+ExecStart=/opt/rechnungs-tool/.venv/bin/python -m streamlit run Preislisten.py --server.port 8501 --server.address 127.0.0.1 --server.headless true
+
+# Restart settings
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

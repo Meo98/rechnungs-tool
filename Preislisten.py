@@ -17,45 +17,85 @@ Card_BG = "#313244"        # Surface0
 
 st.markdown(f"""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
     /* Global Text and Background */
-    .stApp {{
-        background-color: {BG_COLOR};
-        color: {TEXT_COLOR};
-    }}
-    h1, h2, h3, h4, h5, h6, p, div, span, label {{
-        color: {TEXT_COLOR} !important;
-    }}
+    html, body, [class*="css"] {
+        font-family: 'JetBrains Mono', monospace;
+    }
     
-    /* Input Fields */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input {{
-        color: {TEXT_COLOR};
-        background-color: {Card_BG};
-        border-color: {PRIMARY_COLOR};
-    }}
-    .stSelectbox>div>div>div {{
-        color: {TEXT_COLOR};
-        background-color: {Card_BG};
-    }}
+    .stApp {
+        background-color: #11111b; /* Crust/Darker Base */
+        color: #cdd6f4;
+    }
     
-    /* Buttons */
-    .stButton>button {{
-        color: {BG_COLOR};
-        background-color: {PRIMARY_COLOR};
-        border-radius: 8px;
-        border: none;
+    h1, h2, h3, h4, h5, h6, p, div, span, label, .stMarkdown {
+        font-family: 'JetBrains Mono', monospace !important;
+        color: #cdd6f4 !important;
+    }
+
+    /* Inputs - Industrial Look */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+        color: #cdd6f4;
+        background-color: #181825; /* Mantle */
+        border: 1px solid #45475a; /* Surface1 */
+        border-radius: 0px; /* Sharp edges */
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
+        border-color: #89b4fa; /* Blue focus */
+        box-shadow: none;
+    }
+
+    .stSelectbox>div>div>div {
+        color: #cdd6f4;
+        background-color: #181825;
+        border: 1px solid #45475a;
+        border-radius: 0px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    
+    /* Buttons - Brutalist/Sharp */
+    .stButton>button {
+        color: #11111b;
+        background-color: #89b4fa; /* Blue */
+        border-radius: 0px;
+        border: 1px solid #89b4fa;
         font-weight: bold;
-    }}
-    .stButton>button:hover {{
-        background-color: {ACCENT_COLOR};
-        color: {BG_COLOR};
-    }}
-    .stDownloadButton>button {{
-        color: {BG_COLOR};
-        background-color: {ACCENT_COLOR};
-        border-radius: 8px;
-        border: none;
+        font-family: 'JetBrains Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: all 0.2s ease;
+    }
+    .stButton>button:hover {
+        background-color: transparent;
+        color: #89b4fa;
+        border: 1px solid #89b4fa;
+    }
+    
+    /* Download Button - Accent */
+    .stDownloadButton>button {
+        color: #11111b;
+        background-color: #f9e2af; /* Yellow */
+        border-radius: 0px;
+        border: 1px solid #f9e2af;
         font-weight: bold;
-    }}
+        font-family: 'JetBrains Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .stDownloadButton>button:hover {
+        background-color: transparent;
+        color: #f9e2af;
+        border: 1px solid #f9e2af;
+    }
+    
+    /* Expander/Cards */
+    .streamlit-expanderHeader {
+        background-color: #181825;
+        border-radius: 0px;
+        font-family: 'JetBrains Mono', monospace;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -234,16 +274,31 @@ for idx, row in enumerate(st.session_state["rows"]):
 arbeitskosten = 0
 if modus == "Kommerziell":
     st.header("Arbeitsstunden")
-    personen_col, stunden_col, rate_col = st.columns(3)
-    with personen_col:
-        personen = st.radio("Anzahl Personen", [1, 2], horizontal=True)
-    with stunden_col:
-        stunden = st.number_input("Arbeitsstunden", min_value=0.0, step=0.5, value=0.0)
-    with rate_col:
-        default_rate = 100 if personen == 1 else 150
-        stundenansatz = st.number_input("Stundenansatz (CHF/h)", min_value=0.0, step=10.0, value=float(default_rate))
     
-    arbeitskosten = stunden * stundenansatz
+    if "staff_rows" not in st.session_state:
+        st.session_state["staff_rows"] = [{"Name": "Person 1", "Stunden": 0.0, "Rate": 100.0}]
+
+    if st.button("Person hinzufügen"):
+        st.session_state["staff_rows"].append({"Name": f"Person {len(st.session_state['staff_rows'])+1}", "Stunden": 0.0, "Rate": 100.0})
+
+    for idx, staff in enumerate(st.session_state["staff_rows"]):
+        c1, c2, c3, c4, c5 = st.columns([3, 2, 2, 2, 1])
+        with c1:
+            staff["Name"] = st.text_input("Name", value=staff["Name"], key=f"staff_name_{idx}")
+        with c2:
+            staff["Stunden"] = st.number_input("Stunden", min_value=0.0, step=0.5, value=float(staff.get("Stunden", 0.0)), key=f"staff_hrs_{idx}")
+        with c3:
+            staff["Rate"] = st.number_input("Ansatz (CHF/h)", min_value=0.0, step=10.0, value=float(staff.get("Rate", 100.0)), key=f"staff_rate_{idx}")
+        with c4:
+            line_total = staff["Stunden"] * staff["Rate"]
+            st.write(f"CHF {line_total:.2f}")
+        with c5:
+             if st.button("❌", key=f"del_staff_{idx}"):
+                st.session_state["staff_rows"].pop(idx)
+                st.rerun()
+        arbeitskosten += staff["Stunden"] * staff["Rate"]
+
+    st.write(f"**Total Personalkosten: CHF {arbeitskosten:.2f}**")
 
 # Rabatt
 st.header("Rabatt")
@@ -347,11 +402,20 @@ if st.button(f"{beleg_typ} generieren"):
         
         # Personalkosten aufführen
         if arbeitskosten > 0:
-            pdf.cell(140, 10, f"Personalkosten ({stunden}h @ {stundenansatz} CHF/h)", 1)
-            pdf.cell(40, 10, f"{arbeitskosten:.2f}", 1, ln=1)
+            pdf.ln(5)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 10, "Personalkosten", ln=1)
+            pdf.set_font("Arial", "", 12)
+            for staff in st.session_state.get("staff_rows", []):
+                if staff["Stunden"] > 0:
+                    line_sum = staff["Stunden"] * staff["Rate"]
+                    pdf.cell(140, 10, f"{staff['Name']} ({staff['Stunden']}h @ {staff['Rate']} CHF/h)", 1)
+                    pdf.cell(40, 10, f"{line_sum:.2f}", 1, ln=1)
+            # Falls man nur die Summe will oder Details. Hier Details.
             
         # Rabatt
         if rabatt_betrag > 0:
+             pdf.ln(5)
              pdf.cell(140, 10, f"Rabatt ({rabatt_prozent}%)", 1)
              pdf.cell(40, 10, f"-{rabatt_betrag:.2f}", 1, ln=1)
              

@@ -1,7 +1,6 @@
 import streamlit as st
 from fpdf import FPDF
 from datetime import date
-from PIL import Image
 import io
 from qrbill import QRBill
 import cairosvg
@@ -19,60 +18,79 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 
-    /* Global Text and Background */
-    html, body, [class*="css"] {
+    /* Hintergrund & Basisschrift */
+    html, body {
         font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .stApp {
-        background-color: #11111b; /* Crust/Darker Base */
+        background-color: #11111b;
         color: #cdd6f4;
     }
-    
-    h1, h2, h3, h4, h5, h6, p, .stMarkdown {
-        font-family: 'JetBrains Mono', monospace !important;
-        color: #cdd6f4 !important;
+    .stApp {
+        background-color: #11111b;
+        color: #cdd6f4;
     }
 
-    /* File uploader fix */
-    [data-testid="stFileUploader"] {
+    /* Überschriften & Text */
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'JetBrains Mono', monospace !important;
+        color: #cdd6f4 !important;
+    }
+    p, .stMarkdown p {
         color: #cdd6f4;
     }
-    [data-testid="stFileUploader"] label {
+
+    /* Labels für alle Inputs */
+    .stTextInput label, .stNumberInput label, .stSelectbox label,
+    .stTextArea label, .stDateInput label, .stFileUploader label {
         color: #cdd6f4 !important;
         font-family: 'JetBrains Mono', monospace !important;
     }
+
+    /* Text Inputs */
+    .stTextInput input, .stNumberInput input, .stTextArea textarea {
+        color: #cdd6f4;
+        background-color: #181825;
+        border: 1px solid #45475a;
+        border-radius: 0px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+    .stTextInput input:focus, .stNumberInput input:focus, .stTextArea textarea:focus {
+        border-color: #89b4fa;
+        box-shadow: none;
+    }
+
+    /* Selectbox */
+    .stSelectbox > div > div {
+        background-color: #181825;
+        border: 1px solid #45475a;
+        border-radius: 0px;
+        color: #cdd6f4;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Date Input */
+    .stDateInput input {
+        color: #cdd6f4;
+        background-color: #181825;
+        border: 1px solid #45475a;
+        border-radius: 0px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* File Uploader */
     [data-testid="stFileUploaderDropzone"] {
         background-color: #181825;
         border: 1px solid #45475a;
         border-radius: 0px;
     }
-
-    /* Inputs - Industrial Look */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input {
+    [data-testid="stFileUploaderDropzoneInstructions"] {
         color: #cdd6f4;
-        background-color: #181825; /* Mantle */
-        border: 1px solid #45475a; /* Surface1 */
-        border-radius: 0px; /* Sharp edges */
         font-family: 'JetBrains Mono', monospace;
     }
-    .stTextInput>div>div>input:focus, .stNumberInput>div>div>input:focus {
-        border-color: #89b4fa; /* Blue focus */
-        box-shadow: none;
-    }
 
-    .stSelectbox>div>div>div {
-        color: #cdd6f4;
-        background-color: #181825;
-        border: 1px solid #45475a;
-        border-radius: 0px;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    
-    /* Buttons - Brutalist/Sharp */
-    .stButton>button {
+    /* Buttons */
+    .stButton > button {
         color: #11111b;
-        background-color: #89b4fa; /* Blue */
+        background-color: #89b4fa;
         border-radius: 0px;
         border: 1px solid #89b4fa;
         font-weight: bold;
@@ -81,16 +99,15 @@ st.markdown("""
         letter-spacing: 1px;
         transition: all 0.2s ease;
     }
-    .stButton>button:hover {
+    .stButton > button:hover {
         background-color: transparent;
         color: #89b4fa;
-        border: 1px solid #89b4fa;
     }
-    
-    /* Download Button - Accent */
-    .stDownloadButton>button {
+
+    /* Download Button */
+    .stDownloadButton > button {
         color: #11111b;
-        background-color: #f9e2af; /* Yellow */
+        background-color: #f9e2af;
         border-radius: 0px;
         border: 1px solid #f9e2af;
         font-weight: bold;
@@ -98,17 +115,9 @@ st.markdown("""
         text-transform: uppercase;
         letter-spacing: 1px;
     }
-    .stDownloadButton>button:hover {
+    .stDownloadButton > button:hover {
         background-color: transparent;
         color: #f9e2af;
-        border: 1px solid #f9e2af;
-    }
-    
-    /* Expander/Cards */
-    .streamlit-expanderHeader {
-        background-color: #181825;
-        border-radius: 0px;
-        font-family: 'JetBrains Mono', monospace;
     }
     </style>
     """, unsafe_allow_html=True)

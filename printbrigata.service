@@ -4,13 +4,10 @@ After=network.target
 
 [Service]
 User=root
-# The user is running in /root/rechnungs-tool
-WorkingDirectory=/root/rechnungs-tool
-Environment="PATH=/root/rechnungs-tool/venv/bin:/usr/local/bin:/usr/bin:/bin"
+WorkingDirectory=/opt/rechnungs-tool
+Environment="PATH=/opt/rechnungs-tool/.venv/bin:/usr/local/bin:/usr/bin:/bin"
 
-# command to start the app
-# Note: Using 'venv' (not .venv) because the user created it manually as 'venv'
-ExecStart=/root/rechnungs-tool/venv/bin/python -m streamlit run Preislisten.py --server.port 8501 --server.address 127.0.0.1 --server.headless true
+ExecStart=/opt/rechnungs-tool/.venv/bin/python -m streamlit run Preislisten.py --server.port 8501 --server.address 127.0.0.1 --server.headless true
 
 Restart=always
 RestartSec=5

@@ -325,25 +325,26 @@ verbrauch_betrag = subtotal_discounted * zuschlag_verbrauch
 betrieb_betrag = subtotal_discounted * zuschlag_betrieb
 total_all = subtotal_discounted + verbrauch_betrag + betrieb_betrag
 
-# SWISS QR erzeugen (SVG ➜ PNG)
-bill = QRBill(
-    account=iban.replace(" ", ""),
-    creditor=CREDITOR_ADDR,
-    amount=f"{total_all:.2f}",
-    currency="CHF",
-    additional_information=f"{beleg_typ} {doc_nr}"
-)
-svg_buf = io.StringIO()
-bill.as_svg(svg_buf)
-svg_content = svg_buf.getvalue()
+# SWISS QR nur bei Rechnungen erzeugen
+buf = None
+if beleg_typ == "Rechnung" and total_all > 0:
+    bill = QRBill(
+        account=iban.replace(" ", ""),
+        creditor=CREDITOR_ADDR,
+        amount=f"{total_all:.2f}",
+        currency="CHF",
+        additional_information=f"{beleg_typ} {doc_nr}"
+    )
+    svg_buf = io.StringIO()
+    bill.as_svg(svg_buf)
+    svg_content = svg_buf.getvalue()
 
-# In Streamlit anzeigen
-st.markdown(f"<div>{svg_content}</div>", unsafe_allow_html=True)
+    st.subheader("Swiss QR-Rechnung")
+    st.markdown(f"<div>{svg_content}</div>", unsafe_allow_html=True)
 
-# SVG zu PNG konvertieren für PDF
-png_bytes = cairosvg.svg2png(bytestring=svg_content.encode("utf-8"))
-buf = io.BytesIO(png_bytes)
-buf.seek(0)
+    png_bytes = cairosvg.svg2png(bytestring=svg_content.encode("utf-8"))
+    buf = io.BytesIO(png_bytes)
+    buf.seek(0)
 
 # PDF-Export
 if st.button(f"{beleg_typ} generieren"):
@@ -436,14 +437,15 @@ if st.button(f"{beleg_typ} generieren"):
         pdf.cell(0, 10, f"Betrag: {total_all:.2f} CHF", ln=1, align="C")
         pdf.cell(0, 8, "Zahlbar innert 30 Tagen.", ln=1, align="C")
 
-        # Nächste Seite: QR-Code
-        pdf.add_page()
-        pdf.image(buf, x=25, y=30, w=160)  # Möglichst groß
-
+        # Nächste Seite: QR-Code (nur bei Rechnungen)
+        if buf is not None:
+            pdf.add_page()
+            pdf.image(buf, x=25, y=30, w=160)
 
         # Speichern und Download anbieten
         pdf_bytes = pdf.output()
-        st.success(f"{beleg_typ} inkl. QR erstellt!")
+        label = f"{beleg_typ} inkl. QR erstellt!" if buf else f"{beleg_typ} erstellt!"
+        st.success(label)
         st.download_button("PDF herunterladen", data=bytes(pdf_bytes), file_name=f"{beleg_typ}_{doc_nr}.pdf", mime="application/pdf")
     except Exception as e:
         st.error(f"Fehler beim Erstellen des PDFs: {e}")

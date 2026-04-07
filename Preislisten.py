@@ -29,9 +29,23 @@ st.markdown("""
         color: #cdd6f4;
     }
     
-    h1, h2, h3, h4, h5, h6, p, div, span, label, .stMarkdown {
+    h1, h2, h3, h4, h5, h6, p, .stMarkdown {
         font-family: 'JetBrains Mono', monospace !important;
         color: #cdd6f4 !important;
+    }
+
+    /* File uploader fix */
+    [data-testid="stFileUploader"] {
+        color: #cdd6f4;
+    }
+    [data-testid="stFileUploader"] label {
+        color: #cdd6f4 !important;
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+    [data-testid="stFileUploaderDropzone"] {
+        background-color: #181825;
+        border: 1px solid #45475a;
+        border-radius: 0px;
     }
 
     /* Inputs - Industrial Look */
